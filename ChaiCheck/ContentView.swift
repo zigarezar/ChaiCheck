@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var store: TeaStore
     @EnvironmentObject private var brew: BrewEngine
+    @State private var openedDefault = false
 
     var body: some View {
         ZStack {
@@ -14,6 +15,13 @@ struct ContentView: View {
                 EmptyShelf()
             } else {
                 ShelfView()
+            }
+        }
+        .onAppear {
+            guard !openedDefault else { return }
+            openedDefault = true
+            if let tea = store.defaultTea {
+                brew.open(tea)
             }
         }
         .sheet(isPresented: $store.adding) {
@@ -71,35 +79,32 @@ private struct ShelfView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                wordmark
-                Spacer()
-                Button {
-                    Haptics.tap()
-                    store.adding = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Theme.onFill)
-                        .frame(width: 36, height: 36)
-                        .background(Theme.ink)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add tea")
-            }
+            wordmark
 
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(store.teas) { tea in
-                        Button {
-                            Haptics.tap()
-                            brew.open(tea)
-                        } label: {
-                            TeaCard(tea: tea)
-                        }
-                        .buttonStyle(.plain)
+                        TeaCard(
+                            tea: tea,
+                            isDefault: store.isDefault(tea),
+                            onOpen: {
+                                Haptics.tap()
+                                brew.open(tea)
+                            },
+                            onPin: {
+                                Haptics.tap()
+                                store.toggleDefault(tea)
+                            }
+                        )
                         .contextMenu {
+                            Button {
+                                store.toggleDefault(tea)
+                            } label: {
+                                Label(
+                                    store.isDefault(tea) ? "Clear default" : "Use as default",
+                                    systemImage: store.isDefault(tea) ? "pin.slash" : "pin"
+                                )
+                            }
                             Button(role: .destructive) {
                                 store.remove(tea)
                             } label: {
@@ -107,6 +112,26 @@ private struct ShelfView: View {
                             }
                         }
                     }
+
+                    Button {
+                        Haptics.tap()
+                        store.adding = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 17, weight: .semibold))
+                            Text("Add tea")
+                                .font(.system(size: 17, weight: .medium, design: .rounded))
+                        }
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Theme.chip)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add tea")
+                    .padding(.top, 4)
                 }
                 .padding(.bottom, 24)
             }
@@ -118,6 +143,9 @@ private struct ShelfView: View {
 
 private struct TeaCard: View {
     let tea: Tea
+    let isDefault: Bool
+    let onOpen: () -> Void
+    let onPin: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -125,32 +153,54 @@ private struct TeaCard: View {
                 .frame(width: 5)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(tea.name)
-                        .font(.system(size: 28, weight: .medium, design: .serif))
-                        .foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text(tea.summary)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+            Button(action: onOpen) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(tea.name)
+                            .font(.system(size: 28, weight: .medium, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Spacer(minLength: 8)
+                        Text(tea.summary)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundStyle(Theme.muted)
+                    }
+                    if tea.tempLine.isEmpty == false {
+                        Text(tea.tempLine)
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .foregroundStyle(Theme.muted)
+                    }
+                    Text(tea.note)
+                        .font(.system(size: 14, weight: .regular, design: .serif))
+                        .italic()
                         .foregroundStyle(Theme.muted)
                 }
-                if tea.tempLine.isEmpty == false {
-                    Text(tea.tempLine)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundStyle(Theme.muted)
-                }
-                Text(tea.note)
-                    .font(.system(size: 14, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(Theme.muted)
+                .padding(.vertical, 18)
+                .padding(.leading, 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(18)
+            .buttonStyle(.plain)
+
+            Button(action: onPin) {
+                VStack(spacing: 4) {
+                    Image(systemName: isDefault ? "pin.fill" : "pin")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(isDefault ? Theme.ink : Theme.muted)
+                    if isDefault {
+                        Text("DEFAULT")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                            .tracking(0.6)
+                            .foregroundStyle(Theme.muted)
+                    }
+                }
+                .frame(width: 56, height: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isDefault ? "Default tea, tap to clear" : "Make default")
+            .padding(.trailing, 6)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.chip)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -380,24 +430,30 @@ private struct BrewView: View {
     }
 
     private var header: some View {
-        HStack {
-            Button {
-                Haptics.tap()
-                brew.close()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain)
-            Spacer()
+        ZStack {
             Text("CHAICHECK")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .tracking(3.2)
                 .foregroundStyle(Theme.muted)
-            Spacer()
-            Color.clear.frame(width: 36, height: 36)
+
+            HStack {
+                Button {
+                    Haptics.tap()
+                    brew.close()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("Select")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(Theme.ink)
+                    .frame(height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Select tea")
+                Spacer()
+            }
         }
         .padding(.top, 8)
     }

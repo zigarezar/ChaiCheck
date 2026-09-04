@@ -202,13 +202,35 @@ enum Phase: Equatable {
 final class TeaStore: ObservableObject {
     @Published var teas: [Tea] = []
     @Published var adding = false
+    @Published var defaultID: UUID?
 
-    private static let key = "shelf"
+    private static let shelfKey = "shelf"
+    private static let defaultKey = "defaultTeaId"
+
+    var defaultTea: Tea? {
+        if let defaultID, let match = teas.first(where: { $0.id == defaultID }) {
+            return match
+        }
+        if teas.count == 1 {
+            return teas[0]
+        }
+        return nil
+    }
+
+    func isDefault(_ tea: Tea) -> Bool {
+        if defaultID == tea.id { return true }
+        return defaultID == nil && teas.count == 1
+    }
 
     init() {
-        if let data = UserDefaults.standard.data(forKey: Self.key),
+        if let data = UserDefaults.standard.data(forKey: Self.shelfKey),
            let saved = try? JSONDecoder().decode([Tea].self, from: data) {
             teas = saved
+        }
+        if let raw = UserDefaults.standard.string(forKey: Self.defaultKey),
+           let id = UUID(uuidString: raw),
+           teas.contains(where: { $0.id == id }) {
+            defaultID = id
         }
     }
 
@@ -217,19 +239,36 @@ final class TeaStore: ObservableObject {
         if let key = tea.presetKey, let existing = teas.first(where: { $0.presetKey == key }) {
             return existing
         }
+        let first = teas.isEmpty
         teas.append(tea)
+        if first {
+            defaultID = tea.id
+        }
         persist()
         return tea
     }
 
     func remove(_ tea: Tea) {
         teas.removeAll { $0.id == tea.id }
+        if defaultID == tea.id {
+            defaultID = nil
+        }
+        persist()
+    }
+
+    func toggleDefault(_ tea: Tea) {
+        defaultID = (defaultID == tea.id) ? nil : tea.id
         persist()
     }
 
     private func persist() {
         if let data = try? JSONEncoder().encode(teas) {
-            UserDefaults.standard.set(data, forKey: Self.key)
+            UserDefaults.standard.set(data, forKey: Self.shelfKey)
+        }
+        if let defaultID {
+            UserDefaults.standard.set(defaultID.uuidString, forKey: Self.defaultKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.defaultKey)
         }
     }
 }
