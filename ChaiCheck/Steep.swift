@@ -1,155 +1,245 @@
+import AVFoundation
 import SwiftUI
-import UserNotifications
 import UIKit
+import UserNotifications
 
-enum BrewKind: String, Codable {
-    case steep
-    case simmer
+struct SteepStep: Identifiable, Hashable, Codable {
+    var id: UUID
+    var seconds: Int
+    var celsius: Int?
+    var rung: String
+
+    init(id: UUID = UUID(), seconds: Int, celsius: Int?, rung: String) {
+        self.id = id
+        self.seconds = seconds
+        self.celsius = celsius
+        self.rung = rung
+    }
 }
 
 struct Tea: Identifiable, Hashable, Codable {
-    let id: String
-    let name: String
-    let kind: BrewKind
-    let waterC: Int
-    let baseSeconds: Int
-    let extraSeconds: Int
-    let rinseSeconds: Int?
-    let typicalInfusions: Int
-    let note: String
+    var id: UUID
+    var name: String
+    var steps: [SteepStep]
+    var note: String
+    var presetKey: String?
 
-    var reSteeps: Bool { typicalInfusions > 1 }
+    init(
+        id: UUID = UUID(),
+        name: String,
+        steps: [SteepStep],
+        note: String,
+        presetKey: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.steps = steps
+        self.note = note
+        self.presetKey = presetKey
+    }
+
+    var summary: String {
+        if steps.count == 1 {
+            return TimeFormatting.clock(TimeInterval(steps[0].seconds))
+        }
+        return "\(steps.count) steeps"
+    }
+
+    var tempLine: String {
+        let temps = steps.compactMap(\.celsius).map { "\($0)°" }
+        guard temps.isEmpty == false else { return "" }
+        return temps.joined(separator: "  ")
+    }
 }
 
-extension Tea {
-    static let all: [Tea] = [
-        Tea(
-            id: "chai",
-            name: "Chai",
-            kind: .simmer,
-            waterC: 100,
-            baseSeconds: 10 * 60,
-            extraSeconds: 0,
-            rinseSeconds: nil,
-            typicalInfusions: 1,
-            note: "Milk and masala. Keep a rolling simmer."
-        ),
-        Tea(
-            id: "black",
-            name: "Black",
-            kind: .steep,
-            waterC: 100,
-            baseSeconds: 4 * 60,
-            extraSeconds: 45,
-            rinseSeconds: nil,
-            typicalInfusions: 2,
-            note: "Full boil. Second cup can go a bit longer."
-        ),
-        Tea(
-            id: "green",
-            name: "Green",
-            kind: .steep,
-            waterC: 75,
-            baseSeconds: 150,
-            extraSeconds: 30,
-            rinseSeconds: nil,
-            typicalInfusions: 2,
-            note: "Don't use boiling water — it turns bitter."
-        ),
-        Tea(
-            id: "oolong",
-            name: "Oolong",
-            kind: .steep,
-            waterC: 90,
-            baseSeconds: 2 * 60,
-            extraSeconds: 20,
-            rinseSeconds: nil,
-            typicalInfusions: 5,
-            note: "This leaf wants several short steeps."
-        ),
-        Tea(
-            id: "white",
-            name: "White",
-            kind: .steep,
-            waterC: 80,
-            baseSeconds: 4 * 60,
-            extraSeconds: 30,
-            rinseSeconds: nil,
-            typicalInfusions: 2,
-            note: "Cooler water, unhurried steep."
-        ),
-        Tea(
-            id: "puerh",
-            name: "Pu-erh",
-            kind: .steep,
-            waterC: 100,
-            baseSeconds: 3 * 60,
-            extraSeconds: 15,
-            rinseSeconds: 10,
-            typicalInfusions: 6,
-            note: "Rinse the leaf first, then many short steeps."
-        ),
-        Tea(
-            id: "herbal",
-            name: "Herbal",
-            kind: .steep,
-            waterC: 100,
-            baseSeconds: 6 * 60,
-            extraSeconds: 0,
-            rinseSeconds: nil,
-            typicalInfusions: 1,
-            note: "Usually one long steep. Cover the cup."
-        ),
+enum Ladder {
+    static let multipliers: [(Double, String)] = [
+        (1.0, "base"),
+        (0.5, "×0.5"),
+        (2.0, "×2"),
     ]
 
-    static let fallback = all[1]
+    static func steps(baseSeconds: Int, temps: [Int]) -> [SteepStep] {
+        zip(multipliers, temps).map { multiplier, temp in
+            let seconds = max(15, Int((Double(baseSeconds) * multiplier.0).rounded()))
+            return SteepStep(seconds: seconds, celsius: temp, rung: multiplier.1)
+        }
+    }
+
+    static func senchaStyle(
+        name: String,
+        baseSeconds: Int,
+        temps: [Int] = [70, 80, 90],
+        note: String,
+        presetKey: String? = nil
+    ) -> Tea {
+        Tea(
+            name: name,
+            steps: steps(baseSeconds: baseSeconds, temps: temps),
+            note: note,
+            presetKey: presetKey
+        )
+    }
+}
+
+enum Preset {
+    static let sencha = Ladder.senchaStyle(
+        name: "Sencha",
+        baseSeconds: 60,
+        note: "1:00 / 0:30 / 2:00 · 70 / 80 / 90°C",
+        presetKey: "sencha"
+    )
+
+    static let chai = Tea(
+        name: "Chai",
+        steps: [SteepStep(seconds: 10 * 60, celsius: 100, rung: "simmer")],
+        note: "Milk and masala. Keep a rolling simmer.",
+        presetKey: "chai"
+    )
+
+    static let black = Tea(
+        name: "Black",
+        steps: [
+            SteepStep(seconds: 4 * 60, celsius: 100, rung: "base"),
+            SteepStep(seconds: 4 * 60 + 45, celsius: 100, rung: "second"),
+        ],
+        note: "Full boil. Second cup a bit longer.",
+        presetKey: "black"
+    )
+
+    static let green = Tea(
+        name: "Green",
+        steps: [
+            SteepStep(seconds: 150, celsius: 75, rung: "base"),
+            SteepStep(seconds: 180, celsius: 75, rung: "second"),
+        ],
+        note: "Western green. Don't use boiling water.",
+        presetKey: "green"
+    )
+
+    static let oolong = Tea(
+        name: "Oolong",
+        steps: [
+            SteepStep(seconds: 120, celsius: 90, rung: "1"),
+            SteepStep(seconds: 140, celsius: 90, rung: "2"),
+            SteepStep(seconds: 160, celsius: 90, rung: "3"),
+            SteepStep(seconds: 180, celsius: 90, rung: "4"),
+            SteepStep(seconds: 200, celsius: 90, rung: "5"),
+        ],
+        note: "Several short steeps.",
+        presetKey: "oolong"
+    )
+
+    static let white = Tea(
+        name: "White",
+        steps: [
+            SteepStep(seconds: 4 * 60, celsius: 80, rung: "base"),
+            SteepStep(seconds: 4 * 60 + 30, celsius: 80, rung: "second"),
+        ],
+        note: "Cooler water, unhurried steep.",
+        presetKey: "white"
+    )
+
+    static let puerh = Tea(
+        name: "Pu-erh",
+        steps: [
+            SteepStep(seconds: 10, celsius: 100, rung: "rinse"),
+            SteepStep(seconds: 3 * 60, celsius: 100, rung: "1"),
+            SteepStep(seconds: 3 * 60 + 15, celsius: 100, rung: "2"),
+            SteepStep(seconds: 3 * 60 + 30, celsius: 100, rung: "3"),
+        ],
+        note: "Rinse the leaf, then short steeps.",
+        presetKey: "puerh"
+    )
+
+    static let herbal = Tea(
+        name: "Herbal",
+        steps: [SteepStep(seconds: 6 * 60, celsius: 100, rung: "steep")],
+        note: "Usually one long steep. Cover the cup.",
+        presetKey: "herbal"
+    )
+
+    static let all: [Tea] = [sencha, chai, black, green, oolong, white, puerh, herbal]
 }
 
 enum Phase: Equatable {
     case idle
     case running
-    case paused
-    case done
+    case ringing
 }
 
 @MainActor
-final class SteepEngine: ObservableObject {
-    @Published private(set) var tea: Tea
-    @Published private(set) var infusion: Int
-    @Published private(set) var isRinse: Bool
-    @Published private(set) var phase: Phase
-    @Published private(set) var planned: TimeInterval
-    @Published private(set) var total: TimeInterval
+final class TeaStore: ObservableObject {
+    @Published var teas: [Tea] = []
+    @Published var adding = false
 
-    private var endDate: Date?
-    private var didWarn = false
-    private var didCheckIn = false
-
-    private static let lastTeaKey = "lastTeaId"
-    private static let notifID = "chaicheck.steep.done"
+    private static let key = "shelf"
 
     init() {
-        let savedId = UserDefaults.standard.string(forKey: Self.lastTeaKey)
-        let tea = Tea.all.first(where: { $0.id == savedId }) ?? Tea.fallback
-        self.tea = tea
-        self.infusion = 1
-        self.isRinse = tea.rinseSeconds != nil
-        let start = Self.defaultDuration(tea: tea, infusion: 1, rinse: tea.rinseSeconds != nil)
-        self.planned = start
-        self.total = start
-        self.phase = .idle
+        if let data = UserDefaults.standard.data(forKey: Self.key),
+           let saved = try? JSONDecoder().decode([Tea].self, from: data) {
+            teas = saved
+        }
     }
 
-    var isActive: Bool { phase == .running || phase == .paused }
+    @discardableResult
+    func add(_ tea: Tea) -> Tea {
+        if let key = tea.presetKey, let existing = teas.first(where: { $0.presetKey == key }) {
+            return existing
+        }
+        teas.append(tea)
+        persist()
+        return tea
+    }
+
+    func remove(_ tea: Tea) {
+        teas.removeAll { $0.id == tea.id }
+        persist()
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(teas) {
+            UserDefaults.standard.set(data, forKey: Self.key)
+        }
+    }
+}
+
+@MainActor
+final class BrewEngine: ObservableObject {
+    @Published private(set) var tea: Tea?
+    @Published private(set) var stepIndex = 0
+    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var planned: TimeInterval = 0
+    @Published private(set) var total: TimeInterval = 0
+
+    private var endDate: Date?
+    private let alarm = KettleAlarm()
+    private static let notifID = "chaicheck.steep.done"
+
+    var step: SteepStep? {
+        guard let tea, tea.steps.indices.contains(stepIndex) else { return nil }
+        return tea.steps[stepIndex]
+    }
+
+    var isOpen: Bool { tea != nil }
+    var isLastStep: Bool {
+        guard let tea else { return true }
+        return stepIndex >= tea.steps.count - 1
+    }
+
+    var nextStep: SteepStep? {
+        guard let tea, tea.steps.indices.contains(stepIndex + 1) else { return nil }
+        return tea.steps[stepIndex + 1]
+    }
 
     func remaining(at now: Date = .now) -> TimeInterval {
         switch phase {
-        case .idle, .paused:
+        case .idle:
             return planned
         case .running:
             guard let endDate else { return planned }
             return max(0, endDate.timeIntervalSince(now))
-        case .done:
+        case .ringing:
             return 0
         }
     }
@@ -157,199 +247,97 @@ final class SteepEngine: ObservableObject {
     func progress(at now: Date = .now) -> Double {
         guard total > 0 else { return 0 }
         switch phase {
-        case .idle, .paused:
+        case .idle:
             return 0
         case .running:
             return min(1, max(0, 1 - remaining(at: now) / total))
-        case .done:
+        case .ringing:
             return 1
         }
     }
 
-    var subtitle: String {
-        if isRinse { return "Rinse — discard this water" }
-        if tea.kind == .simmer { return "Simmer" }
-        if tea.reSteeps {
-            return "Infusion \(infusion) of ~\(tea.typicalInfusions)"
-        }
-        return "Steep"
-    }
-
-    var waterLine: String {
-        if isRinse { return "Hot rinse · 10s" }
-        return "\(tea.waterC)°C water"
-    }
-
-    var nextLine: String? {
-        guard !isRinse, tea.reSteeps, tea.extraSeconds > 0 else { return nil }
-        let extra = formatted(TimeInterval(tea.extraSeconds))
-        return "Next steep +\(extra)"
-    }
-
-    var primaryTitle: String {
-        switch phase {
-        case .idle:
-            if isRinse { return "Rinse" }
-            return tea.kind == .simmer ? "Simmer" : "Steep"
-        case .running:
-            return "Pause"
-        case .paused:
-            return "Resume"
-        case .done:
-            if isRinse { return "Steep" }
-            if tea.kind == .simmer { return "Another pot" }
-            return "Steep again"
-        }
-    }
-
-    func formatted(_ interval: TimeInterval) -> String {
-        let seconds = max(0, Int(ceil(interval - 0.0001)))
-        return String(format: "%d:%02d", seconds / 60, seconds % 60)
-    }
-
-    func select(_ tea: Tea) {
-        guard phase != .running else { return }
+    func open(_ tea: Tea) {
+        alarm.stop()
         cancelNotification()
         self.tea = tea
-        UserDefaults.standard.set(tea.id, forKey: Self.lastTeaKey)
-        infusion = 1
-        isRinse = tea.rinseSeconds != nil
-        planned = Self.defaultDuration(tea: tea, infusion: 1, rinse: isRinse)
-        total = planned
+        stepIndex = 0
+        loadCurrentStep()
+        phase = .idle
+        StayAwake.on()
+    }
+
+    func close() {
+        alarm.stop()
+        cancelNotification()
+        tea = nil
+        stepIndex = 0
         phase = .idle
         endDate = nil
-        didWarn = false
-        didCheckIn = false
-        updateIdleTimer()
-        Haptics.tap()
+        StayAwake.off()
     }
 
     func start() {
         let duration = remaining(at: .now)
-        guard duration > 0 else { return }
+        guard duration > 0, tea != nil else { return }
         requestNotificationsIfNeeded()
         endDate = Date().addingTimeInterval(duration)
         total = duration
         phase = .running
-        didWarn = duration <= 10
-        didCheckIn = tea.kind != .simmer || duration <= 120
         scheduleNotification(in: duration)
-        updateIdleTimer()
+        StayAwake.on()
     }
 
-    func pause() {
-        guard phase == .running else { return }
-        planned = remaining(at: .now)
-        phase = .paused
-        endDate = nil
+    func cancelSteep() {
+        alarm.stop()
         cancelNotification()
-        updateIdleTimer()
-    }
-
-    func resume() {
-        guard phase == .paused else { return }
-        start()
-    }
-
-    func cancel() {
-        cancelNotification()
-        phase = .idle
-        planned = Self.defaultDuration(tea: tea, infusion: infusion, rinse: isRinse)
-        total = planned
-        endDate = nil
-        didWarn = false
-        didCheckIn = false
-        updateIdleTimer()
-    }
-
-    func advance() {
-        guard phase == .done else { return }
-        if isRinse {
-            isRinse = false
-            infusion = 1
-            planned = TimeInterval(tea.baseSeconds)
-            total = planned
-            phase = .idle
-            return
-        }
-        if tea.kind == .simmer || !tea.reSteeps {
-            reset()
-            return
-        }
-        infusion += 1
-        planned = TimeInterval(tea.baseSeconds + (infusion - 1) * tea.extraSeconds)
-        total = planned
-        phase = .idle
-        didWarn = false
-        didCheckIn = false
-    }
-
-    func reset() {
-        cancelNotification()
-        infusion = 1
-        isRinse = tea.rinseSeconds != nil
-        planned = Self.defaultDuration(tea: tea, infusion: 1, rinse: isRinse)
-        total = planned
+        loadCurrentStep()
         phase = .idle
         endDate = nil
-        didWarn = false
-        didCheckIn = false
-        updateIdleTimer()
+        StayAwake.on()
     }
 
-    func nudge(_ delta: TimeInterval) {
-        switch phase {
-        case .done:
+    func acknowledge() {
+        alarm.stop()
+        cancelNotification()
+        if isLastStep {
+            close()
             return
-        case .idle, .paused:
-            planned = max(15, planned + delta)
-            total = planned
-        case .running:
-            guard let endDate else { return }
-            let next = max(Date().addingTimeInterval(15), endDate.addingTimeInterval(delta))
-            self.endDate = next
-            let remaining = next.timeIntervalSinceNow
-            total = max(15, total + delta)
-            didWarn = remaining <= 10
-            scheduleNotification(in: remaining)
         }
-        Haptics.tap()
+        stepIndex += 1
+        loadCurrentStep()
+        phase = .idle
+        StayAwake.on()
     }
 
     func tick(at now: Date) {
         guard phase == .running, let endDate else { return }
-        let left = endDate.timeIntervalSince(now)
-        if tea.kind == .simmer, !didCheckIn, left <= 120, left > 10 {
-            didCheckIn = true
-            Haptics.checkIn()
-        }
-        if !didWarn, left <= 10, left > 0 {
-            didWarn = true
-            Haptics.warn()
-        }
-        if left <= 0 {
+        if endDate.timeIntervalSince(now) <= 0 {
             complete()
+        }
+    }
+
+    func syncStayAwake() {
+        if tea != nil {
+            StayAwake.on()
+        } else {
+            StayAwake.off()
         }
     }
 
     private func complete() {
         guard phase == .running else { return }
-        phase = .done
+        phase = .ringing
         endDate = nil
         cancelNotification()
-        updateIdleTimer()
+        StayAwake.on()
+        alarm.ring()
         Haptics.done()
     }
 
-    private func updateIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = (phase == .running)
-    }
-
-    private static func defaultDuration(tea: Tea, infusion: Int, rinse: Bool) -> TimeInterval {
-        if rinse, let rinseSeconds = tea.rinseSeconds {
-            return TimeInterval(rinseSeconds)
-        }
-        return TimeInterval(tea.baseSeconds + max(0, infusion - 1) * tea.extraSeconds)
+    private func loadCurrentStep() {
+        planned = TimeInterval(step?.seconds ?? 0)
+        total = planned
+        endDate = nil
     }
 
     private func requestNotificationsIfNeeded() {
@@ -358,18 +346,10 @@ final class SteepEngine: ObservableObject {
 
     private func scheduleNotification(in interval: TimeInterval) {
         cancelNotification()
-        guard interval > 0.5 else { return }
+        guard interval > 0.5, let tea, let step else { return }
         let content = UNMutableNotificationContent()
-        if isRinse {
-            content.title = "Rinse is done"
-            content.body = "Dump the water, then steep \(tea.name)."
-        } else if tea.kind == .simmer {
-            content.title = "Chai is ready"
-            content.body = "Take it off the heat."
-        } else {
-            content.title = "Tea is ready"
-            content.body = tea.reSteeps ? "\(tea.name) · infusion \(infusion)" : tea.name
-        }
+        content.title = "\(tea.name) is ready"
+        content.body = "Steep \(stepIndex + 1) of \(tea.steps.count)" + (step.celsius.map { " · \($0)°C" } ?? "")
         content.sound = .default
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
         let request = UNNotificationRequest(identifier: Self.notifID, content: content, trigger: trigger)
@@ -381,20 +361,54 @@ final class SteepEngine: ObservableObject {
     }
 }
 
+enum StayAwake {
+    static func on() {
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+
+    static func off() {
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
+}
+
+final class KettleAlarm {
+    private var player: AVAudioPlayer?
+
+    func ring() {
+        stop()
+        guard let url = Bundle.main.url(forResource: "ring", withExtension: "wav") else { return }
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .default, options: [.duckOthers])
+            try session.setActive(true)
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = -1
+            player.volume = 1
+            player.prepareToPlay()
+            player.play()
+            self.player = player
+        } catch {
+            // Stay-awake screen + haptic still fire if audio fails.
+        }
+    }
+
+    func stop() {
+        player?.stop()
+        player = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+enum TimeFormatting {
+    static func clock(_ interval: TimeInterval) -> String {
+        let seconds = max(0, Int(ceil(interval - 0.0001)))
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
 enum Haptics {
     static func tap() {
         UISelectionFeedbackGenerator().selectionChanged()
-    }
-
-    static func warn() {
-        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-    }
-
-    static func checkIn() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        }
     }
 
     static func done() {

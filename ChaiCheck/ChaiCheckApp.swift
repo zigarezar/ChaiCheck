@@ -2,18 +2,21 @@ import SwiftUI
 
 @main
 struct ChaiCheckApp: App {
-    @StateObject private var engine = SteepEngine()
+    @StateObject private var store = TeaStore()
+    @StateObject private var brew = BrewEngine()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(engine)
+                .environmentObject(store)
+                .environmentObject(brew)
                 .preferredColorScheme(.dark)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                engine.tick(at: .now)
+                brew.tick(at: .now)
+                brew.syncStayAwake()
             }
         }
     }

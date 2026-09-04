@@ -11,6 +11,7 @@
 		AA0000000000000000000022 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* ContentView.swift */; };
 		AA0000000000000000000023 /* Steep.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000013 /* Steep.swift */; };
 		AA0000000000000000000024 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000014 /* Assets.xcassets */; };
+		AA0000000000000000000025 /* ring.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000015 /* ring.wav */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +20,7 @@
 		AA0000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000013 /* Steep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Steep.swift; sourceTree = "<group>"; };
 		AA0000000000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA0000000000000000000015 /* ring.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = ring.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +48,7 @@
 				AA0000000000000000000011 /* ChaiCheckApp.swift */,
 				AA0000000000000000000012 /* ContentView.swift */,
 				AA0000000000000000000013 /* Steep.swift */,
+				AA0000000000000000000015 /* ring.wav */,
 				AA0000000000000000000014 /* Assets.xcassets */,
 			);
 			path = ChaiCheck;
@@ -118,6 +121,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA0000000000000000000024 /* Assets.xcassets in Resources */,
+				AA0000000000000000000025 /* ring.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
