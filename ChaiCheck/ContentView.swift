@@ -30,6 +30,11 @@ struct ContentView: View {
                 .environmentObject(brew)
                 .presentationDetents([.large])
         }
+        .sheet(item: $store.editing) { tea in
+            EditTeaSheet(tea: tea)
+                .environmentObject(store)
+                .presentationDetents([.large])
+        }
     }
 }
 
@@ -94,6 +99,11 @@ private struct ShelfView: View {
                             }
                         )
                         .contextMenu {
+                            Button {
+                                store.editing = tea
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
                             Button {
                                 store.toggleDefault(tea)
                             } label: {
@@ -394,6 +404,134 @@ private struct AddTeaSheet: View {
         let added = store.add(tea)
         dismiss()
         brew.open(added)
+    }
+}
+
+private struct EditTeaSheet: View {
+    @EnvironmentObject private var store: TeaStore
+    @Environment(\.dismiss) private var dismiss
+
+    let teaID: UUID
+    let presetKey: String?
+    @State private var name: String
+    @State private var steps: [SteepStep]
+    @State private var note: String
+
+    init(tea: Tea) {
+        teaID = tea.id
+        presetKey = tea.presetKey
+        _name = State(initialValue: tea.name)
+        _steps = State(initialValue: tea.steps)
+        _note = State(initialValue: tea.note)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("NAME")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .tracking(2.4)
+                            .foregroundStyle(Theme.muted)
+                        TextField("Name", text: $name)
+                            .textInputAutocapitalization(.words)
+                            .font(.system(size: 22, weight: .medium, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                    }
+
+                    ForEach($steps) { $step in
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text(step.rung.capitalized)
+                                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                if let celsius = step.celsius {
+                                    Text("\(celsius)°C")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                        .foregroundStyle(Theme.muted)
+                                }
+                            }
+
+                            HStack(spacing: 8) {
+                                nudge("−1m", -60, for: $step)
+                                nudge("−15s", -15, for: $step)
+                                Text(TimeFormatting.clock(TimeInterval(step.seconds)))
+                                    .font(.system(size: 28, weight: .medium, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.ink)
+                                    .frame(minWidth: 84)
+                                nudge("+15s", 15, for: $step)
+                                nudge("+1m", 60, for: $step)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .padding(16)
+                        .background(Theme.chip)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("NOTE")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .tracking(2.4)
+                            .foregroundStyle(Theme.muted)
+                        TextField("Optional", text: $note, axis: .vertical)
+                            .font(.system(size: 16, weight: .regular, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                    }
+
+                    Button {
+                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        store.update(
+                            Tea(
+                                id: teaID,
+                                name: trimmed.isEmpty ? "Tea" : trimmed,
+                                steps: steps,
+                                note: note,
+                                presetKey: presetKey
+                            )
+                        )
+                        Haptics.tap()
+                        dismiss()
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .foregroundStyle(Theme.onFill)
+                            .background(Theme.ink)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(20)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle("Edit tea")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func nudge(_ title: String, _ delta: Int, for step: Binding<SteepStep>) -> some View {
+        Button {
+            step.wrappedValue.seconds = min(60 * 60, max(15, step.wrappedValue.seconds + delta))
+        } label: {
+            Text(title)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(Theme.ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(Theme.bg)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 

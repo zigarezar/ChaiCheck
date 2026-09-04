@@ -184,7 +184,7 @@ enum Preset {
 
     static let herbal = Tea(
         name: "Herbal",
-        steps: [SteepStep(seconds: 6 * 60, celsius: 100, rung: "steep")],
+        steps: [SteepStep(seconds: 10 * 60, celsius: 100, rung: "steep")],
         note: "Usually one long steep. Cover the cup.",
         presetKey: "herbal"
     )
@@ -202,6 +202,7 @@ enum Phase: Equatable {
 final class TeaStore: ObservableObject {
     @Published var teas: [Tea] = []
     @Published var adding = false
+    @Published var editing: Tea?
     @Published var defaultID: UUID?
 
     private static let shelfKey = "shelf"
@@ -258,6 +259,12 @@ final class TeaStore: ObservableObject {
 
     func toggleDefault(_ tea: Tea) {
         defaultID = (defaultID == tea.id) ? nil : tea.id
+        persist()
+    }
+
+    func update(_ tea: Tea) {
+        guard let index = teas.firstIndex(where: { $0.id == tea.id }) else { return }
+        teas[index] = tea
         persist()
     }
 
