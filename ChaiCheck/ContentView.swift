@@ -256,7 +256,7 @@ private struct AddTeaSheet: View {
                         .font(.system(size: 28, weight: .medium, design: .serif))
                         .foregroundStyle(Theme.ink)
                     HStack(spacing: 16) {
-                        rung(time: "1:00", temp: "70°", label: "base")
+                        rung(time: "1:00", temp: "70°", label: "First")
                         rung(time: "0:30", temp: "80°", label: "×0.5")
                         rung(time: "2:00", temp: "90°", label: "×2")
                     }
@@ -291,7 +291,7 @@ private struct AddTeaSheet: View {
                         rung(
                             time: TimeFormatting.clock(TimeInterval(step.seconds)),
                             temp: step.celsius.map { "\($0)°" } ?? "",
-                            label: step.rung
+                            label: step.displayRung
                         )
                     }
                 }
@@ -469,7 +469,7 @@ private struct EditTeaSheet: View {
                             .listRowInsets(EdgeInsets())
                     } header: {
                         HStack {
-                            Text(step.rung)
+                            Text(step.displayRung)
                             Spacer()
                             if let celsius = step.celsius {
                                 Text("\(celsius)°C")
@@ -571,7 +571,7 @@ private struct BrewView: View {
                 .font(.system(size: 34, weight: .medium, design: .serif))
                 .foregroundStyle(Theme.ink)
             if let tea = brew.tea, let step = brew.step {
-                Text("Steep \(brew.stepIndex + 1) of \(tea.steps.count)  ·  \(step.rung)")
+                Text("Steep \(brew.stepIndex + 1) of \(tea.steps.count)  ·  \(step.displayRung)")
                     .font(.system(size: 16, weight: .regular, design: .rounded))
                     .foregroundStyle(Theme.muted)
             }

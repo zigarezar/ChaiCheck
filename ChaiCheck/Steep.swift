@@ -15,6 +15,13 @@ struct SteepStep: Identifiable, Hashable, Codable {
         self.celsius = celsius
         self.rung = rung
     }
+
+    var displayRung: String {
+        switch rung {
+        case "base": return "First"
+        default: return rung
+        }
+    }
 }
 
 struct Tea: Identifiable, Hashable, Codable {
@@ -84,7 +91,7 @@ enum Liquor {
 
 enum Ladder {
     static let multipliers: [(Double, String)] = [
-        (1.0, "base"),
+        (1.0, "First"),
         (0.5, "×0.5"),
         (2.0, "×2"),
     ]
@@ -130,7 +137,7 @@ enum Preset {
     static let black = Tea(
         name: "Black",
         steps: [
-            SteepStep(seconds: 4 * 60, celsius: 100, rung: "base"),
+            SteepStep(seconds: 4 * 60, celsius: 100, rung: "First"),
             SteepStep(seconds: 4 * 60 + 45, celsius: 100, rung: "second"),
         ],
         note: "Full boil. Second cup a bit longer.",
@@ -140,7 +147,7 @@ enum Preset {
     static let green = Tea(
         name: "Green",
         steps: [
-            SteepStep(seconds: 150, celsius: 75, rung: "base"),
+            SteepStep(seconds: 150, celsius: 75, rung: "First"),
             SteepStep(seconds: 180, celsius: 75, rung: "second"),
         ],
         note: "Western green. Don't use boiling water.",
@@ -163,7 +170,7 @@ enum Preset {
     static let white = Tea(
         name: "White",
         steps: [
-            SteepStep(seconds: 4 * 60, celsius: 80, rung: "base"),
+            SteepStep(seconds: 4 * 60, celsius: 80, rung: "First"),
             SteepStep(seconds: 4 * 60 + 30, celsius: 80, rung: "second"),
         ],
         note: "Cooler water, unhurried steep.",
