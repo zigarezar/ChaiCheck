@@ -469,6 +469,22 @@ private struct EditTeaSheet: View {
                     TextField("Name", text: $name)
                         .textInputAutocapitalization(.words)
                         .font(.system(size: 22, weight: .medium, design: .serif))
+                    if canLink {
+                        Button {
+                            Haptics.tap()
+                            linked.toggle()
+                            if linked { applyLink() }
+                        } label: {
+                            Image(systemName: linked ? "link" : "link.slash")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(linked ? Theme.ink : Theme.muted)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(linked ? "Steep times linked" : "Steep times independent")
+                        .accessibilityHint("When linked, second is half the first and third is double.")
+                    }
                 }
 
                 ForEach(steps.indices, id: \.self) { index in
@@ -497,24 +513,6 @@ private struct EditTeaSheet: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Edit tea")
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .top) {
-                if canLink {
-                    Button {
-                        Haptics.tap()
-                        linked.toggle()
-                        if linked { applyLink() }
-                    } label: {
-                        Image(systemName: linked ? "link" : "link.slash")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(linked ? Theme.ink : Theme.muted)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(linked ? "Steep times linked" : "Steep times independent")
-                    .accessibilityHint("When linked, second is half the first and third is double.")
-                }
-            }
             .onChange(of: steps.first?.seconds ?? 0) { _, _ in
                 if linked { applyLink() }
             }
