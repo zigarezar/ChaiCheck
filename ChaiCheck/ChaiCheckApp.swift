@@ -11,7 +11,6 @@ struct ChaiCheckApp: App {
             ContentView()
                 .environmentObject(store)
                 .environmentObject(brew)
-                .preferredColorScheme(.dark)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {

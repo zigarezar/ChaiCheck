@@ -7,16 +7,6 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             Theme.bg.ignoresSafeArea()
-            RadialGradient(
-                colors: [
-                    Color(red: 0.23, green: 0.13, blue: 0.07).opacity(0.9),
-                    Theme.bg
-                ],
-                center: .center,
-                startRadius: 20,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
 
             if brew.isOpen {
                 BrewView()
@@ -31,7 +21,6 @@ struct ContentView: View {
                 .environmentObject(store)
                 .environmentObject(brew)
                 .presentationDetents([.large])
-                .preferredColorScheme(.dark)
         }
     }
 }
@@ -52,20 +41,20 @@ private struct EmptyShelf: View {
                         Circle()
                             .fill(Theme.chip)
                             .frame(width: 168, height: 168)
-                            .shadow(color: .black.opacity(0.4), radius: 18, y: 10)
+                            .shadow(color: Color.primary.opacity(0.12), radius: 18, y: 10)
                         Circle()
-                            .stroke(Theme.amber.opacity(0.9), lineWidth: 5)
+                            .stroke(Theme.ink.opacity(0.85), lineWidth: 5)
                             .frame(width: 168, height: 168)
                         Circle()
                             .stroke(Theme.line, lineWidth: 2)
                             .frame(width: 132, height: 132)
                         Image(systemName: "plus")
                             .font(.system(size: 58, weight: .medium, design: .rounded))
-                            .foregroundStyle(Theme.amber)
+                            .foregroundStyle(Theme.ink)
                     }
                     Text("Add tea")
                         .font(.system(size: 20, weight: .medium, design: .rounded))
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(Theme.ink)
                 }
             }
             .buttonStyle(.plain)
@@ -91,9 +80,9 @@ private struct ShelfView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Theme.bg)
+                        .foregroundStyle(Theme.onFill)
                         .frame(width: 36, height: 36)
-                        .background(Theme.amber)
+                        .background(Theme.ink)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -131,30 +120,37 @@ private struct TeaCard: View {
     let tea: Tea
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(tea.name)
-                    .font(.system(size: 28, weight: .medium, design: .serif))
-                    .foregroundStyle(Theme.cream)
-                Spacer()
-                Text(tea.summary)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+        HStack(spacing: 0) {
+            tea.liquor
+                .frame(width: 5)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(tea.name)
+                        .font(.system(size: 28, weight: .medium, design: .serif))
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(tea.summary)
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundStyle(Theme.muted)
+                }
+                if tea.tempLine.isEmpty == false {
+                    Text(tea.tempLine)
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundStyle(Theme.muted)
+                }
+                Text(tea.note)
+                    .font(.system(size: 14, weight: .regular, design: .serif))
+                    .italic()
                     .foregroundStyle(Theme.muted)
             }
-            if tea.tempLine.isEmpty == false {
-                Text(tea.tempLine)
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundStyle(Theme.amber)
-            }
-            Text(tea.note)
-                .font(.system(size: 14, weight: .regular, design: .serif))
-                .italic()
-                .foregroundStyle(Theme.muted)
+            .padding(18)
         }
-        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.chip)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -182,7 +178,6 @@ private struct AddTeaSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
-                        .foregroundStyle(Theme.cream)
                 }
             }
         }
@@ -192,27 +187,27 @@ private struct AddTeaSheet: View {
         Button {
             pick(Preset.sencha)
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("SENCHA")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .tracking(2.4)
-                    .foregroundStyle(Theme.amber)
-                Text("Daily driver")
-                    .font(.system(size: 28, weight: .medium, design: .serif))
-                    .foregroundStyle(Theme.cream)
-                HStack(spacing: 16) {
-                    rung(time: "1:00", temp: "70°", label: "base")
-                    rung(time: "0:30", temp: "80°", label: "×0.5")
-                    rung(time: "2:00", temp: "90°", label: "×2")
+            HStack(spacing: 0) {
+                Preset.sencha.liquor
+                    .frame(width: 5)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("SENCHA")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .tracking(2.4)
+                        .foregroundStyle(Theme.muted)
+                    Text("Daily driver")
+                        .font(.system(size: 28, weight: .medium, design: .serif))
+                        .foregroundStyle(Theme.ink)
+                    HStack(spacing: 16) {
+                        rung(time: "1:00", temp: "70°", label: "base")
+                        rung(time: "0:30", temp: "80°", label: "×0.5")
+                        rung(time: "2:00", temp: "90°", label: "×2")
+                    }
                 }
+                .padding(20)
             }
-            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.chip)
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Theme.amber.opacity(0.7), lineWidth: 1.5)
-            )
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -229,7 +224,7 @@ private struct AddTeaSheet: View {
                 TextField("Name", text: $customName)
                     .textInputAutocapitalization(.words)
                     .font(.system(size: 20, weight: .medium, design: .serif))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.ink)
                     .padding(.vertical, 4)
 
                 HStack {
@@ -240,18 +235,18 @@ private struct AddTeaSheet: View {
                         customBase = max(15, customBase - 15)
                     } label: {
                         Text("−15s")
-                            .foregroundStyle(Theme.cream)
+                            .foregroundStyle(Theme.ink)
                     }
                     Text(TimeFormatting.clock(TimeInterval(customBase)))
                         .font(.system(size: 22, weight: .medium, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(Theme.ink)
                         .frame(minWidth: 64)
                     Button {
                         customBase = min(20 * 60, customBase + 15)
                     } label: {
                         Text("+15s")
-                            .foregroundStyle(Theme.cream)
+                            .foregroundStyle(Theme.ink)
                     }
                 }
                 .font(.system(size: 16, weight: .medium, design: .rounded))
@@ -279,8 +274,8 @@ private struct AddTeaSheet: View {
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
-                        .foregroundStyle(Theme.bg)
-                        .background(Theme.amber)
+                        .foregroundStyle(Theme.onFill)
+                        .background(Theme.ink)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -302,23 +297,27 @@ private struct AddTeaSheet: View {
                 Button {
                     pick(tea)
                 } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(tea.name)
-                                .font(.system(size: 20, weight: .medium, design: .serif))
-                                .foregroundStyle(Theme.cream)
-                            Text(tea.note)
-                                .font(.system(size: 13, weight: .regular, design: .serif))
-                                .italic()
+                    HStack(spacing: 0) {
+                        tea.liquor
+                            .frame(width: 5)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(tea.name)
+                                    .font(.system(size: 20, weight: .medium, design: .serif))
+                                    .foregroundStyle(Theme.ink)
+                                Text(tea.note)
+                                    .font(.system(size: 13, weight: .regular, design: .serif))
+                                    .italic()
+                                    .foregroundStyle(Theme.muted)
+                                    .lineLimit(2)
+                            }
+                            Spacer()
+                            Text(tea.summary)
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
                                 .foregroundStyle(Theme.muted)
-                                .lineLimit(2)
                         }
-                        Spacer()
-                        Text(tea.summary)
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundStyle(Theme.amber)
+                        .padding(16)
                     }
-                    .padding(16)
                     .background(Theme.chip)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
@@ -332,10 +331,10 @@ private struct AddTeaSheet: View {
             Text(time)
                 .font(.system(size: 20, weight: .medium, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(Theme.cream)
+                .foregroundStyle(Theme.ink)
             Text(temp)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(Theme.amber)
+                .foregroundStyle(Theme.muted)
             Text(label)
                 .font(.system(size: 12, weight: .regular, design: .rounded))
                 .foregroundStyle(Theme.muted)
@@ -388,7 +387,7 @@ private struct BrewView: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.ink)
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
@@ -407,7 +406,7 @@ private struct BrewView: View {
         VStack(spacing: 6) {
             Text(brew.tea?.name ?? "")
                 .font(.system(size: 34, weight: .medium, design: .serif))
-                .foregroundStyle(Theme.cream)
+                .foregroundStyle(Theme.ink)
             if let tea = brew.tea, let step = brew.step {
                 Text("Steep \(brew.stepIndex + 1) of \(tea.steps.count)  ·  \(step.rung)")
                     .font(.system(size: 16, weight: .regular, design: .rounded))
@@ -417,13 +416,14 @@ private struct BrewView: View {
     }
 
     private func timer(remaining: TimeInterval, progress: Double) -> some View {
-        ZStack {
+        let liquor = brew.tea?.liquor ?? Theme.ink
+        return ZStack {
             Circle()
                 .stroke(Theme.line, lineWidth: 12)
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    brew.phase == .ringing ? Theme.cream : Theme.amber,
+                    brew.phase == .ringing ? Theme.ink : liquor,
                     style: StrokeStyle(lineWidth: 12, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
@@ -432,12 +432,12 @@ private struct BrewView: View {
                 Text("READY")
                     .font(.system(size: 42, weight: .medium, design: .rounded))
                     .tracking(2)
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.ink)
             } else {
                 Text(TimeFormatting.clock(remaining))
                     .font(.system(size: 76, weight: .medium, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.ink)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                     .padding(.horizontal, 28)
@@ -455,7 +455,7 @@ private struct BrewView: View {
                 if let celsius = step.celsius {
                     Text("\(celsius)°C water")
                         .font(.system(size: 18, weight: .medium, design: .rounded))
-                        .foregroundStyle(Theme.amber)
+                        .foregroundStyle(Theme.ink)
                 }
                 if brew.phase == .ringing, let next = brew.nextStep {
                     Text("Next  ·  \(TimeFormatting.clock(TimeInterval(next.seconds)))" + (next.celsius.map { "  ·  \($0)°C" } ?? ""))
@@ -475,7 +475,7 @@ private struct BrewView: View {
                 } label: {
                     Text("Cancel steep")
                         .font(.system(size: 17, weight: .medium, design: .rounded))
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(Theme.chip)
@@ -495,8 +495,8 @@ private struct BrewView: View {
                         .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .foregroundStyle(Theme.bg)
-                        .background(Theme.amber)
+                        .foregroundStyle(Theme.onFill)
+                        .background(Theme.ink)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -536,5 +536,4 @@ private var wordmark: some View {
     ContentView()
         .environmentObject(TeaStore())
         .environmentObject(BrewEngine())
-        .preferredColorScheme(.dark)
 }

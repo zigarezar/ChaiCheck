@@ -50,6 +50,36 @@ struct Tea: Identifiable, Hashable, Codable {
         guard temps.isEmpty == false else { return "" }
         return temps.joined(separator: "  ")
     }
+
+    /// The one non-gray mark: liquor in the cup, not UI chrome.
+    var liquor: Color { Liquor.color(for: presetKey) }
+}
+
+enum Liquor {
+    static func color(for presetKey: String?) -> Color {
+        switch presetKey {
+        case "sencha":
+            return Color(red: 0.20, green: 0.48, blue: 0.22) // chlorophyll
+        case "matcha":
+            return Color(red: 0.52, green: 0.72, blue: 0.28) // brighter powder green
+        case "green":
+            return Color(red: 0.38, green: 0.52, blue: 0.22) // olive liquor
+        case "black":
+            return Color(red: 0.28, green: 0.13, blue: 0.07) // dark brown
+        case "chai":
+            return Color(red: 0.55, green: 0.34, blue: 0.16) // milky brown
+        case "oolong":
+            return Color(red: 0.62, green: 0.42, blue: 0.18) // gold liquor
+        case "white":
+            return Color(red: 0.76, green: 0.68, blue: 0.48) // straw
+        case "puerh":
+            return Color(red: 0.36, green: 0.12, blue: 0.08) // deep burgundy-brown
+        case "herbal":
+            return Color(red: 0.62, green: 0.48, blue: 0.28) // dried flower
+        default:
+            return Color(red: 0.50, green: 0.50, blue: 0.50)
+        }
+    }
 }
 
 enum Ladder {
@@ -423,10 +453,10 @@ enum Haptics {
 }
 
 enum Theme {
-    static let bg = Color(red: 0.102, green: 0.071, blue: 0.047)
-    static let cream = Color(red: 0.953, green: 0.902, blue: 0.816)
-    static let amber = Color(red: 0.910, green: 0.639, blue: 0.353)
-    static let muted = Color(red: 0.541, green: 0.451, blue: 0.376)
-    static let line = Color(red: 0.275, green: 0.196, blue: 0.149)
-    static let chip = Color(red: 0.165, green: 0.114, blue: 0.082)
+    static let bg = Color(uiColor: .systemBackground)
+    static let chip = Color(uiColor: .secondarySystemBackground)
+    static let line = Color(uiColor: .separator)
+    static let ink = Color.primary
+    static let muted = Color.secondary
+    static let onFill = Color(uiColor: .systemBackground)
 }
