@@ -284,29 +284,7 @@ private struct AddTeaSheet: View {
                     .foregroundStyle(Theme.ink)
                     .padding(.vertical, 4)
 
-                HStack {
-                    Text("Base time")
-                        .foregroundStyle(Theme.muted)
-                    Spacer()
-                    Button {
-                        customBase = max(15, customBase - 15)
-                    } label: {
-                        Text("−15s")
-                            .foregroundStyle(Theme.ink)
-                    }
-                    Text(TimeFormatting.clock(TimeInterval(customBase)))
-                        .font(.system(size: 22, weight: .medium, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.ink)
-                        .frame(minWidth: 64)
-                    Button {
-                        customBase = min(20 * 60, customBase + 15)
-                    } label: {
-                        Text("+15s")
-                            .foregroundStyle(Theme.ink)
-                    }
-                }
-                .font(.system(size: 16, weight: .medium, design: .rounded))
+                DurationWheels(totalSeconds: $customBase)
 
                 HStack(spacing: 16) {
                     ForEach(Ladder.steps(baseSeconds: customBase, temps: [70, 80, 90]), id: \.rung) { step in
@@ -407,6 +385,57 @@ private struct AddTeaSheet: View {
     }
 }
 
+private struct DurationWheels: View {
+    @Binding var totalSeconds: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Picker("Minutes", selection: minutes) {
+                ForEach(0..<60, id: \.self) { value in
+                    Text("\(value)").tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("Minutes")
+
+            Text("min")
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(Theme.muted)
+                .padding(.trailing, 12)
+
+            Picker("Seconds", selection: seconds) {
+                ForEach(0..<60, id: \.self) { value in
+                    Text(String(format: "%02d", value)).tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("Seconds")
+
+            Text("sec")
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(Theme.muted)
+        }
+        .frame(height: 140)
+        .clipped()
+    }
+
+    private var minutes: Binding<Int> {
+        Binding(
+            get: { totalSeconds / 60 },
+            set: { totalSeconds = max(1, min(59 * 60 + 59, $0 * 60 + totalSeconds % 60)) }
+        )
+    }
+
+    private var seconds: Binding<Int> {
+        Binding(
+            get: { totalSeconds % 60 },
+            set: { totalSeconds = max(1, min(59 * 60 + 59, (totalSeconds / 60) * 60 + $0)) }
+        )
+    }
+}
+
 private struct EditTeaSheet: View {
     @EnvironmentObject private var store: TeaStore
     @Environment(\.dismiss) private var dismiss
@@ -427,111 +456,61 @@ private struct EditTeaSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("NAME")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .tracking(2.4)
-                            .foregroundStyle(Theme.muted)
-                        TextField("Name", text: $name)
-                            .textInputAutocapitalization(.words)
-                            .font(.system(size: 22, weight: .medium, design: .serif))
-                            .foregroundStyle(Theme.ink)
-                    }
-
-                    ForEach($steps) { $step in
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Text(step.rung.capitalized)
-                                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                                    .foregroundStyle(Theme.ink)
-                                Spacer()
-                                if let celsius = step.celsius {
-                                    Text("\(celsius)°C")
-                                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                                        .foregroundStyle(Theme.muted)
-                                }
-                            }
-
-                            HStack(spacing: 8) {
-                                nudge("−1m", -60, for: $step)
-                                nudge("−15s", -15, for: $step)
-                                Text(TimeFormatting.clock(TimeInterval(step.seconds)))
-                                    .font(.system(size: 28, weight: .medium, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Theme.ink)
-                                    .frame(minWidth: 84)
-                                nudge("+15s", 15, for: $step)
-                                nudge("+1m", 60, for: $step)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .padding(16)
-                        .background(Theme.chip)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("NOTE")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .tracking(2.4)
-                            .foregroundStyle(Theme.muted)
-                        TextField("Optional", text: $note, axis: .vertical)
-                            .font(.system(size: 16, weight: .regular, design: .serif))
-                            .foregroundStyle(Theme.ink)
-                    }
-
-                    Button {
-                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                        store.update(
-                            Tea(
-                                id: teaID,
-                                name: trimmed.isEmpty ? "Tea" : trimmed,
-                                steps: steps,
-                                note: note,
-                                presetKey: presetKey
-                            )
-                        )
-                        Haptics.tap()
-                        dismiss()
-                    } label: {
-                        Text("Save")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
-                            .foregroundStyle(Theme.onFill)
-                            .background(Theme.ink)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
+            List {
+                Section {
+                    TextField("Name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .font(.system(size: 22, weight: .medium, design: .serif))
                 }
-                .padding(20)
+
+                ForEach($steps) { $step in
+                    Section {
+                        DurationWheels(totalSeconds: $step.seconds)
+                            .listRowInsets(EdgeInsets())
+                    } header: {
+                        HStack {
+                            Text(step.rung)
+                            Spacer()
+                            if let celsius = step.celsius {
+                                Text("\(celsius)°C")
+                            }
+                        }
+                    }
+                }
+
+                Section("Note") {
+                    TextField("Optional", text: $note, axis: .vertical)
+                        .font(.system(size: 16, weight: .regular, design: .serif))
+                }
             }
-            .background(Theme.bg.ignoresSafeArea())
+            .listStyle(.insetGrouped)
             .navigationTitle("Edit tea")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .fontWeight(.semibold)
+                }
             }
         }
     }
 
-    private func nudge(_ title: String, _ delta: Int, for step: Binding<SteepStep>) -> some View {
-        Button {
-            step.wrappedValue.seconds = min(60 * 60, max(15, step.wrappedValue.seconds + delta))
-        } label: {
-            Text(title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(Theme.ink)
-                .frame(maxWidth: .infinity)
-                .frame(height: 36)
-                .background(Theme.bg)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        }
-        .buttonStyle(.plain)
+    private func save() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        store.update(
+            Tea(
+                id: teaID,
+                name: trimmed.isEmpty ? "Tea" : trimmed,
+                steps: steps,
+                note: note,
+                presetKey: presetKey
+            )
+        )
+        Haptics.tap()
+        dismiss()
     }
 }
 
