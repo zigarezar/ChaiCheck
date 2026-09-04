@@ -257,8 +257,8 @@ private struct AddTeaSheet: View {
                         .foregroundStyle(Theme.ink)
                     HStack(spacing: 16) {
                         rung(time: "1:00", temp: "70°", label: "First")
-                        rung(time: "0:30", temp: "80°", label: "×0.5")
-                        rung(time: "2:00", temp: "90°", label: "×2")
+                        rung(time: "0:30", temp: "80°", label: "Second")
+                        rung(time: "2:00", temp: "90°", label: "Third")
                     }
                 }
                 .padding(20)
@@ -301,7 +301,7 @@ private struct AddTeaSheet: View {
                     let tea = Ladder.senchaStyle(
                         name: name.isEmpty ? "Custom" : name,
                         baseSeconds: customBase,
-                        note: "Base \(TimeFormatting.clock(TimeInterval(customBase))) · ×0.5 · ×2"
+                        note: "\(TimeFormatting.clock(TimeInterval(customBase))) · then half · then double"
                     )
                     pick(tea)
                 } label: {
@@ -387,6 +387,7 @@ private struct AddTeaSheet: View {
 
 private struct DurationWheels: View {
     @Binding var totalSeconds: Int
+    var enabled: Bool = true
 
     var body: some View {
         HStack(spacing: 0) {
@@ -419,6 +420,9 @@ private struct DurationWheels: View {
         }
         .frame(height: 140)
         .clipped()
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.38)
+        .allowsHitTesting(enabled)
     }
 
     private var minutes: Binding<Int> {
@@ -445,6 +449,9 @@ private struct EditTeaSheet: View {
     @State private var name: String
     @State private var steps: [SteepStep]
     @State private var note: String
+    @State private var linked: Bool
+
+    private var canLink: Bool { steps.count == 3 }
 
     init(tea: Tea) {
         teaID = tea.id
@@ -452,6 +459,7 @@ private struct EditTeaSheet: View {
         _name = State(initialValue: tea.name)
         _steps = State(initialValue: tea.steps)
         _note = State(initialValue: tea.note)
+        _linked = State(initialValue: tea.linked && tea.steps.count == 3)
     }
 
     var body: some View {
@@ -463,15 +471,18 @@ private struct EditTeaSheet: View {
                         .font(.system(size: 22, weight: .medium, design: .serif))
                 }
 
-                ForEach($steps) { $step in
+                ForEach(steps.indices, id: \.self) { index in
                     Section {
-                        DurationWheels(totalSeconds: $step.seconds)
-                            .listRowInsets(EdgeInsets())
+                        DurationWheels(
+                            totalSeconds: $steps[index].seconds,
+                            enabled: !(linked && index > 0)
+                        )
+                        .listRowInsets(EdgeInsets())
                     } header: {
                         HStack {
-                            Text(step.displayRung)
+                            Text(steps[index].displayRung)
                             Spacer()
-                            if let celsius = step.celsius {
+                            if let celsius = steps[index].celsius {
                                 Text("\(celsius)°C")
                             }
                         }
@@ -486,6 +497,27 @@ private struct EditTeaSheet: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Edit tea")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top) {
+                if canLink {
+                    Button {
+                        Haptics.tap()
+                        linked.toggle()
+                        if linked { applyLink() }
+                    } label: {
+                        Image(systemName: linked ? "link" : "link.slash")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(linked ? Theme.ink : Theme.muted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(linked ? "Steep times linked" : "Steep times independent")
+                    .accessibilityHint("When linked, second is half the first and third is double.")
+                }
+            }
+            .onChange(of: steps.first?.seconds ?? 0) { _, _ in
+                if linked { applyLink() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -498,6 +530,13 @@ private struct EditTeaSheet: View {
         }
     }
 
+    private func applyLink() {
+        guard steps.count >= 3 else { return }
+        let follow = Ladder.followOn(fromFirst: steps[0].seconds)
+        steps[1].seconds = follow.second
+        steps[2].seconds = follow.third
+    }
+
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         store.update(
@@ -506,7 +545,8 @@ private struct EditTeaSheet: View {
                 name: trimmed.isEmpty ? "Tea" : trimmed,
                 steps: steps,
                 note: note,
-                presetKey: presetKey
+                presetKey: presetKey,
+                linked: linked && canLink
             )
         )
         Haptics.tap()

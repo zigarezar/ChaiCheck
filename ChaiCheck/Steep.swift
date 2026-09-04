@@ -17,8 +17,10 @@ struct SteepStep: Identifiable, Hashable, Codable {
     }
 
     var displayRung: String {
-        switch rung {
-        case "base": return "First"
+        switch rung.lowercased() {
+        case "base", "first": return "First"
+        case "×0.5", "x0.5", "second": return "Second"
+        case "×2", "x2", "third": return "Third"
         default: return rung
         }
     }
@@ -30,19 +32,46 @@ struct Tea: Identifiable, Hashable, Codable {
     var steps: [SteepStep]
     var note: String
     var presetKey: String?
+    var linked: Bool
 
     init(
         id: UUID = UUID(),
         name: String,
         steps: [SteepStep],
         note: String,
-        presetKey: String? = nil
+        presetKey: String? = nil,
+        linked: Bool = false
     ) {
         self.id = id
         self.name = name
         self.steps = steps
         self.note = note
         self.presetKey = presetKey
+        self.linked = linked
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, steps, note, presetKey, linked
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        steps = try container.decode([SteepStep].self, forKey: .steps)
+        note = try container.decode(String.self, forKey: .note)
+        presetKey = try container.decodeIfPresent(String.self, forKey: .presetKey)
+        linked = try container.decodeIfPresent(Bool.self, forKey: .linked) ?? (steps.count == 3)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(steps, forKey: .steps)
+        try container.encode(note, forKey: .note)
+        try container.encodeIfPresent(presetKey, forKey: .presetKey)
+        try container.encode(linked, forKey: .linked)
     }
 
     var summary: String {
@@ -91,9 +120,9 @@ enum Liquor {
 
 enum Ladder {
     static let multipliers: [(Double, String)] = [
-        (1.0, "First"),
-        (0.5, "×0.5"),
-        (2.0, "×2"),
+        (1.0, "first"),
+        (0.5, "second"),
+        (2.0, "third"),
     ]
 
     static func steps(baseSeconds: Int, temps: [Int]) -> [SteepStep] {
@@ -101,6 +130,13 @@ enum Ladder {
             let seconds = max(15, Int((Double(baseSeconds) * multiplier.0).rounded()))
             return SteepStep(seconds: seconds, celsius: temp, rung: multiplier.1)
         }
+    }
+
+    static func followOn(fromFirst seconds: Int) -> (second: Int, third: Int) {
+        (
+            max(1, Int((Double(seconds) * 0.5).rounded())),
+            max(1, Int((Double(seconds) * 2.0).rounded()))
+        )
     }
 
     static func senchaStyle(
@@ -114,7 +150,8 @@ enum Ladder {
             name: name,
             steps: steps(baseSeconds: baseSeconds, temps: temps),
             note: note,
-            presetKey: presetKey
+            presetKey: presetKey,
+            linked: true
         )
     }
 }

@@ -15,8 +15,8 @@ Three steeps, sencha-style ladder:
 | | time | water |
 |---|---|---|
 | First | 1:00 | 70°C |
-| ×0.5 | 0:30 | 80°C |
-| ×2 | 2:00 | 90°C |
+| Second | 0:30 | 80°C |
+| Third | 2:00 | 90°C |
 
 Custom teas use the same ladder from a base time.
 
