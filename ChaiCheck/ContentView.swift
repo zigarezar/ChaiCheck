@@ -38,7 +38,6 @@ private struct EmptyShelf: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            wordmark
             Spacer()
             Button {
                 Haptics.tap()
@@ -79,8 +78,6 @@ private struct ShelfView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            wordmark
-
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(store.teas) { tea in
@@ -430,30 +427,23 @@ private struct BrewView: View {
     }
 
     private var header: some View {
-        ZStack {
-            Text("CHAICHECK")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .tracking(3.2)
-                .foregroundStyle(Theme.muted)
-
-            HStack {
-                Button {
-                    Haptics.tap()
-                    brew.close()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text("Select")
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
-                    }
-                    .foregroundStyle(Theme.ink)
-                    .frame(height: 36)
+        HStack {
+            Button {
+                Haptics.tap()
+                brew.close()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("Select")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Select tea")
-                Spacer()
+                .foregroundStyle(Theme.ink)
+                .frame(height: 36)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Select tea")
+            Spacer()
         }
         .padding(.top, 8)
     }
@@ -578,14 +568,6 @@ private struct BrewView: View {
         let seconds = max(0, Int(ceil(remaining - 0.0001)))
         return "\(seconds / 60) minutes \(seconds % 60) seconds remaining"
     }
-}
-
-private var wordmark: some View {
-    Text("CHAICHECK")
-        .font(.system(size: 13, weight: .semibold, design: .rounded))
-        .tracking(3.2)
-        .foregroundStyle(Theme.muted)
-        .padding(.top, 8)
 }
 
 #Preview("Empty") {
